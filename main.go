@@ -25,7 +25,6 @@ func main() {
 	runtime.GOMAXPROCS(maxProcs)
 
 	regions := []string{
-		"ap-east-1",
 		"ap-northeast-1",
 		"ap-northeast-2",
 		"ap-northeast-3",
@@ -140,6 +139,15 @@ func getIpsinProfile(profile string, region string) string {
 			fmt.Printf("Toekn expited for the profile %v, region %v. Thus skipping \n", profile, region)
 			return ""
 		}
+		if strings.Contains(stderr.String(), "UnrecognizedClientException") {
+			fmt.Printf("User doesnt have access for the profile %v, region %v. Thus skipping \n", profile, region)
+			return ""
+		}
+		if strings.Contains(stderr.String(), "AccessDeniedException") {
+			fmt.Printf("User doesnt have access for the profile %v, region %v. Thus skipping \n", profile, region)
+			return ""
+		}
+
 		fmt.Println(cmd.Stderr)
 		fmt.Println(profile + region)
 		panic(err)
