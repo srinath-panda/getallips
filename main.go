@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"strings"
 	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -31,7 +32,9 @@ func main() {
 		log.Fatal(err)
 	}
 
+	fmt.Println("------------------------------------------output---------------------------------------------------")
 	fmt.Println(string(data))
+	fmt.Println("------------------------------------------output---------------------------------------------------")
 
 	// ioutil.WriteFile("./ipsa.json", data, 0644)
 
@@ -50,8 +53,12 @@ func getAppPips(profiles []string, regions []string) []PipOp {
 				defer wg.Done()
 				var dat map[string]interface{}
 				str := getIpsinProfile(profile, region)
+				if str == "" {
+					return
+				}
 
 				if err := json.Unmarshal([]byte(str), &dat); err != nil {
+					fmt.Println("1")
 					panic(err)
 				}
 
@@ -65,6 +72,7 @@ func getAppPips(profiles []string, regions []string) []PipOp {
 						var dat2 map[string]interface{}
 
 						if err := json.Unmarshal([]byte(dt), &dat2); err != nil {
+							fmt.Println("2")
 							panic(err)
 						}
 
@@ -96,6 +104,12 @@ func getIpsinProfile(profile string, region string) string {
 	err := cmd.Run()
 
 	if err != nil {
+		if strings.Contains(stderr.String(), "ExpiredTokenException") {
+			fmt.Printf("Toekn expited for the profile %v, region %v. Thus skipping \n", profile, region)
+			return ""
+		}
+		fmt.Println(cmd.Stderr)
+		fmt.Println(profile + region)
 		panic(err)
 	}
 	return stdout.String()
