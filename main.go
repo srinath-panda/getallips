@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -20,6 +21,8 @@ type PipOp struct {
 }
 
 func main() {
+	maxProcs := runtime.NumCPU()
+	runtime.GOMAXPROCS(maxProcs)
 
 	regions := []string{
 		"ap-east-1",
@@ -62,23 +65,28 @@ func main() {
 
 func getAppPips(profiles []string, regions []string) []PipOp {
 	pipOps := make([]PipOp, 0)
+	maxGoroutines := 20
 
 	var mx sync.Mutex
+	guard := make(chan struct{}, maxGoroutines)
 
 	var wg sync.WaitGroup
 	for _, region := range regions {
 		for _, profile := range profiles {
 			wg.Add(1)
+			guard <- struct{}{}
 			go func(profile string, region string) {
 				defer wg.Done()
 				var dat map[string]interface{}
 				str := getIpsinProfile(profile, region)
 				if str == "" {
+					<-guard
 					return
 				}
 
 				if err := json.Unmarshal([]byte(str), &dat); err != nil {
 					fmt.Println("1")
+					<-guard
 					panic(err)
 				}
 
@@ -93,6 +101,8 @@ func getAppPips(profiles []string, regions []string) []PipOp {
 
 						if err := json.Unmarshal([]byte(dt), &dat2); err != nil {
 							fmt.Println("2")
+							<-guard
+
 							panic(err)
 						}
 
@@ -104,6 +114,8 @@ func getAppPips(profiles []string, regions []string) []PipOp {
 						mx.Unlock()
 					}
 				}
+				<-guard
+
 			}(profile, region)
 		}
 	}
